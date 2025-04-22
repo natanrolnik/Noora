@@ -65,7 +65,6 @@ struct ProgressStep<V> {
 
             let message: String = .progressCompletionMessage(
                 successMessage ?? message,
-                timeString: timeString(start: start),
                 theme: theme,
                 terminal: terminal
             )
@@ -75,7 +74,7 @@ struct ProgressStep<V> {
         } catch {
             standardPipelines.error
                 .write(
-                    content: "    \("⨯".hexIfColoredTerminal(theme.danger, terminal)) \((errorMessage ?? message).hexIfColoredTerminal(theme.muted, terminal)) \(timeString(start: start))\n"
+                    content: "    \("⨯".hexIfColoredTerminal(theme.danger, terminal)) \((errorMessage ?? message).hexIfColoredTerminal(theme.muted, terminal))\n"
                 )
             logger?.error("'\(message)' failed with '\(errorMessage ?? message)'")
             throw error
@@ -83,8 +82,6 @@ struct ProgressStep<V> {
     }
 
     func runInteractive() async throws -> V {
-        let start = DispatchTime.now()
-
         defer {
             if showSpinner {
                 spinner.stop()
@@ -97,20 +94,19 @@ struct ProgressStep<V> {
         if showSpinner {
             spinner.spin { icon in
                 spinnerIcon = icon
-                render(message: lastMessage, icon: spinnerIcon ?? "ℹ︎")
+                render(message: lastMessage.hexIfColoredTerminal(theme.primary, terminal).boldIfColoredTerminal(terminal), icon: spinnerIcon ?? "ℹ︎")
             }
         }
 
         do {
-            render(message: lastMessage, icon: spinnerIcon ?? "ℹ︎")
+            render(message: lastMessage.hexIfColoredTerminal(theme.primary, terminal).boldIfColoredTerminal(terminal), icon: spinnerIcon ?? "ℹ︎")
             let result = try await task { progressMessage in
-                lastMessage = progressMessage
+                lastMessage = progressMessage.hexIfColoredTerminal(theme.primary, terminal).boldIfColoredTerminal(terminal)
                 render(message: lastMessage, icon: spinnerIcon ?? "ℹ︎")
             }
             renderer.render(
                 .progressCompletionMessage(
-                    (successMessage ?? message).hexIfColoredTerminal(theme.primary, terminal).boldIfColoredTerminal(terminal),
-                    timeString: timeString(start: start),
+                    (successMessage ?? message).hexIfColoredTerminal(theme.muted, terminal),
                     theme: theme,
                     terminal: terminal
                 ),
@@ -122,7 +118,6 @@ struct ProgressStep<V> {
             renderer.render(
                 .progressErrorMessage(
                     (errorMessage ?? message).hexIfColoredTerminal(theme.danger, terminal).boldIfColoredTerminal(terminal),
-                    timeString: timeString(start: start),
                     theme: theme,
                     terminal: terminal
                 ),
@@ -139,11 +134,6 @@ struct ProgressStep<V> {
             standardPipeline: standardPipelines.output
         )
     }
-
-    private func timeString(start: DispatchTime) -> String {
-        let elapsedTime = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000_000
-        return "[\(String(format: "%.1f", elapsedTime))s]".hexIfColoredTerminal(theme.muted, terminal)
-    }
 }
 
 extension String {
@@ -153,7 +143,7 @@ extension String {
         theme: Theme,
         terminal: Terminaling
     ) -> String {
-        "\("✔︎".hexIfColoredTerminal(theme.success, terminal)) \(message)\(" \(timeString ?? "")")"
+        "\("✔︎".hexIfColoredTerminal(theme.muted, terminal)) \(message)\(" \(timeString ?? "")")"
     }
 
     static func progressErrorMessage(
